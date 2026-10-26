@@ -1,9 +1,8 @@
 // Configuração do Gestor RAIDENS.
-// owner/repo são detectados automaticamente pela URL do GitHub Pages
-// (https://<owner>.github.io/<repo>/). Preencha apenas se quiser fixar outro repositório.
+// O token de acesso NÃO fica aqui: ele vai em js/config.local.js (ignorado pelo Git).
 window.GESTOR_CONFIG = {
-  owner: '',            // ex.: 'sesiraidens'
-  repo: '',             // ex.: 'gestor'
+  owner: 'sesiraidens',
+  repo: 'raidens_manager',
   dataBranch: 'dados',  // branch onde ficam o banco (JSON) e os anexos
   dbPath: 'data/db.json',
   filesDir: 'arquivos',
