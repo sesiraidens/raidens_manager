@@ -4,6 +4,8 @@ Gestor de projetos e documentações da equipe RAIDENS: projetos, tópicos de do
 
 Site 100% estático (HTML/CSS/JS) hospedado no GitHub Pages. **Não precisa de servidor nem banco**: tudo é salvo neste próprio repositório pela API do GitHub.
 
+**Endereço:** https://sesiraidens.github.io/raidens_manager/ (publicado a partir do branch `gh-pages`; ao alterar o site, envie para `main` e `gh-pages`, ou mude a fonte do Pages para `main` em Settings → Pages).
+
 ## Como funciona
 
 - **Leitura pública**: qualquer pessoa que abrir o site vê os projetos.
