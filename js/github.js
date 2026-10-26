@@ -1,10 +1,8 @@
 // Camada de persistência: tudo fica no próprio repositório GitHub (API REST de contents).
-// Leitura é pública; escrita usa o token pessoal que cada membro informa (salvo só no navegador dele).
+// O app roda em localhost e usa o token configurado em js/config.local.js.
 const GH = (() => {
   const API = 'https://api.github.com';
   const cfg = window.GESTOR_CONFIG || {};
-  const TOKEN_KEY = 'raidens-gestor-token';
-
   function detectRepo() {
     if (cfg.owner && cfg.repo) return { owner: cfg.owner, repo: cfg.repo };
     const host = location.hostname;
@@ -16,12 +14,8 @@ const GH = (() => {
 
   const repo = { ...detectRepo(), branch: cfg.dataBranch || 'dados' };
 
-  function getToken() {
-    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
-  }
-  function setToken(t) {
-    try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {}
-  }
+  // O token vem de js/config.local.js (fora do Git), nunca do código publicado.
+  const getToken = () => (window.GESTOR_LOCAL && window.GESTOR_LOCAL.token) || '';
 
   async function req(path, { method = 'GET', body, accept, auth = true } = {}) {
     const headers = { Accept: accept || 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
@@ -118,18 +112,5 @@ const GH = (() => {
     await req(`/repos/${repo.owner}/${repo.repo}/git/refs`, { method: 'POST', body: { ref: `refs/heads/${repo.branch}`, sha: base.object.sha } });
   }
 
-  // Valida o token: retorna o usuário e se ele pode escrever no repositório.
-  async function verify(token) {
-    const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` };
-    const u = await fetch(`${API}/user`, { headers, cache: 'no-store' });
-    if (!u.ok) throw new Error('Token inválido ou expirado.');
-    const user = await u.json();
-    const r = await fetch(`${API}/repos/${repo.owner}/${repo.repo}`, { headers, cache: 'no-store' });
-    if (!r.ok) throw new Error(`Este token não tem acesso a ${repo.owner}/${repo.repo}.`);
-    const info = await r.json();
-    if (!info.permissions || !info.permissions.push) throw new Error('Este token só tem leitura. Ele precisa de permissão de escrita (Contents: Read and write).');
-    return { login: user.login, name: user.name || user.login, avatar: user.avatar_url };
-  }
-
-  return { repo, getToken, setToken, getJSON, putFile, deleteFile, getBlob, rawUrl, ensureBranch, verify, utf8ToB64, bytesToB64 };
+  return { repo, getToken, getJSON, putFile, deleteFile, getBlob, rawUrl, ensureBranch, utf8ToB64, bytesToB64 };
 })();

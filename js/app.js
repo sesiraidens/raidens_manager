@@ -1,8 +1,7 @@
 // Gestor RAIDENS — projetos, documentação, anexos, evolução e checklist.
 (() => {
   const cfg = window.GESTOR_CONFIG;
-  const USER_KEY = 'raidens-gestor-user';
-  const THEME_KEY = 'raidens-gestor-theme';
+  const NAME_KEY = 'raidens-gestor-nome';
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const main = $('#main');
@@ -71,10 +70,18 @@
   const PRIO = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
   const statusBadge = (s) => { const st = STATUS[s] || STATUS.planejamento; return `<span class="badge ${st.cls}">${st.label}</span>`; };
 
+  function ring(pct, size = 64, stroke = 6) {
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r;
+    return `<div class="ring ${pct === 100 ? 'done' : ''}" style="--size:${size}px" role="img" aria-label="${pct}% concluído">
+      <svg viewBox="0 0 ${size} ${size}"><circle class="ring-bg" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-width="${stroke}"/>
+      <circle class="ring-fg" cx="${size / 2}" cy="${size / 2}" r="${r}" stroke-width="${stroke}" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${(c * (1 - pct / 100)).toFixed(2)}"/></svg>
+      <span>${pct}<small>%</small></span></div>`;
+  }
+
   // ---------- Estado ----------
   const state = {
     db: null,
-    user: JSON.parse(store.get(USER_KEY) || 'null'),
+    name: store.get(NAME_KEY) || (window.GESTOR_LOCAL && window.GESTOR_LOCAL.nome) || '',
     q: '', status: '', sort: 'recent',
     checkFilter: 'pendentes',
     editing: null,       // id do tópico em edição
@@ -126,7 +133,7 @@
 
   // Aplica uma alteração sobre a versão mais recente do banco e grava. Repete se outra pessoa salvou ao mesmo tempo.
   async function mutate(fn, message) {
-    if (!canEdit()) { openLogin(); return false; }
+    if (!canEdit()) { toast('Token não configurado em js/config.local.js.', true); return false; }
     state.saving = true;
     setSync('saving');
     try {
@@ -139,13 +146,13 @@
         db.updatedAt = now();
         try {
           if (!state.branchReady) { await GH.ensureBranch(); state.branchReady = true; }
-          await GH.putFile(cfg.dbPath, GH.utf8ToB64(JSON.stringify(db, null, 2)), `${message} (${state.user?.login || 'web'})`, sha);
+          await GH.putFile(cfg.dbPath, GH.utf8ToB64(JSON.stringify(db, null, 2)), `${message} (${by()})`, sha);
           state.db = db;
           render();
           return true;
         } catch (e) {
           if (e.status === 409 || (e.status === 422 && /sha/i.test(e.message))) continue;
-          if (e.status === 401) { logout(); throw new Error('Seu token expirou. Entre novamente.'); }
+          if (e.status === 401) throw new Error('O token em js/config.local.js é inválido ou expirou.');
           throw e;
         }
       }
@@ -159,7 +166,7 @@
     }
   }
 
-  const by = () => state.user?.login || 'alguém';
+  const by = () => state.name || 'Equipe';
   function log(p, kind, title, body = '') {
     p.timeline.unshift({ id: uid(), kind, title, body, at: now(), by: by() });
   }
@@ -207,66 +214,20 @@
     openModal({ title, body: `<p>${text}</p>`, submit, danger: true, onSubmit: onYes });
   }
 
-  // ---------- Autenticação ----------
-  function openLogin() {
-    const newTokenUrl = 'https://github.com/settings/personal-access-tokens/new';
+  // ---------- Identificação (só o nome, para o histórico) ----------
+  function askName() {
     openModal({
-      title: 'Entrar para editar',
-      submit: 'Entrar',
-      body: `<div class="callout">Qualquer pessoa pode <b>ver</b> os projetos. Para <b>criar e editar</b>, use um token pessoal do GitHub com acesso ao repositório <code>${esc(GH.repo.owner)}/${esc(GH.repo.repo)}</code>.
-          <ol><li>Abra <a href="${newTokenUrl}" target="_blank" rel="noopener">GitHub → Fine-grained tokens</a>.</li>
-          <li>Em <i>Repository access</i>, escolha este repositório.</li>
-          <li>Em <i>Permissions → Contents</i>, marque <b>Read and write</b>.</li></ol></div>
-        <div class="field"><label for="tk">Token do GitHub <span class="req">*</span></label>
-          <input class="input" id="tk" name="token" type="password" autocomplete="off" required placeholder="github_pat_… ou ghp_…">
-          <p class="hint">O token fica salvo apenas neste navegador e só é enviado para a API do GitHub.</p></div>`,
-      async onSubmit(fd) {
-        const token = String(fd.get('token') || '').trim();
-        const user = await GH.verify(token);
-        GH.setToken(token);
-        state.user = user;
-        store.set(USER_KEY, JSON.stringify(user));
-        renderAuth();
-        toast(`Conectado como ${user.login}.`);
-        await load();
-      }
+      title: 'Como você quer aparecer?',
+      submit: 'Salvar',
+      body: `<div class="field"><label for="nm">Seu nome <span class="req">*</span></label><input class="input" id="nm" name="nome" required maxlength="40" value="${esc(state.name)}" placeholder="Ex.: Ana"><p class="hint">Aparece no histórico de evolução e nos itens concluídos. Fica salvo neste navegador.</p></div>`,
+      onSubmit(fd) { state.name = String(fd.get('nome')).trim(); store.set(NAME_KEY, state.name); renderName(); }
     });
   }
-  function logout() {
-    GH.setToken('');
-    store.set(USER_KEY, null);
-    state.user = null;
-    renderAuth();
-    setSync('');
-    render();
+  function renderName() {
+    const b = $('#name-btn');
+    b.innerHTML = `<span class="avatar-initial">${esc((state.name || '?').charAt(0).toUpperCase())}</span><span class="auth-label">${esc(state.name || 'Definir nome')}</span>`;
+    b.onclick = askName;
   }
-  function renderAuth() {
-    const b = $('#auth-btn');
-    if (canEdit() && state.user) {
-      b.innerHTML = `<img class="avatar" src="${esc(state.user.avatar)}" alt=""><span class="auth-label">${esc(state.user.login)}</span>${icon('logout', 'icon-sm')}`;
-      b.title = 'Sair (remover token deste navegador)';
-      b.onclick = () => confirmModal('Sair', 'Remover o token deste navegador? Você continua podendo ver os projetos.', () => logout(), 'Sair');
-    } else {
-      b.innerHTML = `${icon('key', 'icon-sm')}<span class="auth-label">Entrar para editar</span>`;
-      b.title = 'Entrar com token do GitHub';
-      b.onclick = openLogin;
-    }
-  }
-
-  // ---------- Tema ----------
-  function effectiveTheme() {
-    return document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  }
-  function renderTheme() {
-    const dark = effectiveTheme() === 'dark';
-    $('#theme-btn').innerHTML = icon(dark ? 'sun' : 'moon');
-  }
-  $('#theme-btn').addEventListener('click', () => {
-    const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    store.set(THEME_KEY, next);
-    renderTheme();
-  });
 
   // ---------- Roteamento ----------
   function route() {
@@ -290,7 +251,7 @@
     }
   }
 
-  const readonlyNote = () => canEdit() ? '' : `<div class="readonly-note">${icon('eye', 'icon-sm')}<span>Você está no modo leitura.</span><button class="btn btn-sm btn-secondary" data-act="login">Entrar para editar</button></div>`;
+  const readonlyNote = () => canEdit() ? '' : `<div class="readonly-note">${icon('key', 'icon-sm')}<span>Modo leitura: o token não foi encontrado em <code>js/config.local.js</code>. Veja o README para configurar.</span></div>`;
 
   // ---------- Página inicial ----------
   function renderHome() {
@@ -312,15 +273,19 @@
     list = [...list].sort(sorters[state.sort]);
 
     main.innerHTML = `
-      <section class="page-head">
-        <div><h1>Projetos</h1><p class="muted">Documentação, anexos, evolução e o que falta fazer em cada projeto da equipe.</p></div>
-        ${canEdit() ? `<button class="btn btn-primary" data-act="new-project">${icon('plus')}Novo projeto</button>` : ''}
+      <section class="hero">
+        <div class="hero-text">
+          <span class="eyebrow"><i></i>Painel da equipe</span>
+          <h1>Projetos <em>RAIDENS</em></h1>
+          <p>Documentação, anexos, evolução e o que falta fazer em cada projeto, num só lugar.</p>
+        </div>
+        ${canEdit() ? `<button class="btn btn-primary btn-lg" data-act="new-project">${icon('plus')}Novo projeto</button>` : ''}
       </section>
       <section class="stats" aria-label="Resumo">
-        <div class="card stat"><span class="caption">Projetos ativos</span><b>${active.length}</b></div>
-        <div class="card stat"><span class="caption">Progresso médio</span><b>${avg}%</b></div>
-        <div class="card stat accent"><span class="caption">Tarefas pendentes</span><b>${pending}</b></div>
-        <div class="card stat"><span class="caption">Tópicos de documentação</span><b>${docs}</b></div>
+        <div class="stat"><span class="stat-ico">${icon('folder')}</span><div><b>${active.length}</b><span>Projetos ativos</span></div></div>
+        <div class="stat"><span class="stat-ico">${icon('activity')}</span><div><b>${avg}%</b><span>Progresso médio</span></div></div>
+        <div class="stat accent"><span class="stat-ico">${icon('checkSq')}</span><div><b>${pending}</b><span>Tarefas pendentes</span></div></div>
+        <div class="stat"><span class="stat-ico">${icon('book')}</span><div><b>${docs}</b><span>Tópicos de documentação</span></div></div>
       </section>
       ${ps.length ? `
       <div class="toolbar" role="search">
@@ -338,7 +303,7 @@
       </div>
       <div class="grid" id="grid">${list.map(projectCard).join('') || `<div class="empty" style="grid-column:1/-1">${icon('search')}<h3>Nenhum projeto encontrado</h3><p>Tente outro termo ou status.</p></div>`}</div>`
       : `<div class="empty">${icon('folder')}<h3>Nenhum projeto ainda</h3><p>Crie o primeiro projeto para começar a organizar documentação, arquivos e tarefas.</p>
-          ${canEdit() ? `<button class="btn btn-primary" data-act="new-project">${icon('plus')}Criar primeiro projeto</button>` : `<button class="btn btn-primary" data-act="login">${icon('key')}Entrar para criar</button>`}</div>`}
+          ${canEdit() ? `<button class="btn btn-primary" data-act="new-project">${icon('plus')}Criar primeiro projeto</button>` : ''}</div>`}
       ${readonlyNote()}`;
 
     const qEl = $('#q');
@@ -352,17 +317,19 @@
   function projectCard(p) {
     const pr = progress(p);
     const overdue = p.due && p.status !== 'concluido' && p.due < new Date().toISOString().slice(0, 10);
-    return `<a class="card card-link" href="#/p/${encodeURIComponent(p.id)}">
-      <div class="card-title"><h3>${esc(p.name)}</h3>${statusBadge(p.status)}</div>
-      ${p.description ? `<p class="clamp">${esc(p.description)}</p>` : ''}
-      <div class="progress"><div class="bar ${pr.pct === 100 ? 'done' : ''}" role="progressbar" aria-valuenow="${pr.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso"><i style="width:${pr.pct}%"></i></div><b>${pr.pct}%</b></div>
-      <div class="meta">
-        <span>${icon('checkSq', 'icon-sm')}${pr.done}/${pr.total} tarefas</span>
-        <span>${icon('book', 'icon-sm')}${p.topics.length} tópicos</span>
-        <span>${icon('clip', 'icon-sm')}${p.files.length} arquivos</span>
-        ${p.due ? `<span style="${overdue ? 'color:var(--red)' : ''}">${icon('cal', 'icon-sm')}${fmtDate(p.due)}</span>` : ''}
+    return `<a class="card card-link st-${p.status}" href="#/p/${encodeURIComponent(p.id)}">
+      <div class="card-top">
+        <div style="min-width:0">${statusBadge(p.status)}<h3>${esc(p.name)}</h3></div>
+        ${ring(pr.pct)}
       </div>
-      <div class="meta"><span>${icon('clock', 'icon-sm')}Atualizado ${ago(p.updatedAt)}</span>${p.owner ? `<span>${icon('user', 'icon-sm')}${esc(p.owner)}</span>` : ''}</div>
+      ${p.description ? `<p class="clamp">${esc(p.description)}</p>` : '<p class="clamp muted-2">Sem descrição.</p>'}
+      <div class="chips">
+        <span>${icon('checkSq', 'icon-sm')}${pr.done}/${pr.total}</span>
+        <span>${icon('book', 'icon-sm')}${p.topics.length}</span>
+        <span>${icon('clip', 'icon-sm')}${p.files.length}</span>
+        ${p.due ? `<span class="${overdue ? 'late' : ''}">${icon('cal', 'icon-sm')}${fmtDate(p.due)}</span>` : ''}
+      </div>
+      <div class="card-foot"><span>${p.owner ? `${icon('user', 'icon-sm')}${esc(p.owner)}` : ''}</span><span>Atualizado ${ago(p.updatedAt)}</span></div>
     </a>`;
   }
 
@@ -379,22 +346,25 @@
     ];
     const tab = tabs.some((t) => t[0] === r.tab) ? r.tab : 'geral';
     main.innerHTML = `
-      <a class="crumb" href="#/">${icon('back', 'icon-sm')}Todos os projetos</a>
-      <section class="proj-head">
-        <div style="flex:1;min-width:0">
-          <div class="title-line"><h1>${esc(p.name)}</h1>${statusBadge(p.status)}</div>
-          ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
-          <div class="meta" style="margin-top:12px">
-            ${p.owner ? `<span>${icon('user', 'icon-sm')}${esc(p.owner)}</span>` : ''}
-            ${p.due ? `<span>${icon('cal', 'icon-sm')}Prazo ${fmtDate(p.due)}</span>` : ''}
-            <span>${icon('clock', 'icon-sm')}Atualizado ${ago(p.updatedAt)}</span>
-            ${(p.tags || []).map((t) => `<span class="badge badge-outline">${esc(t)}</span>`).join('')}
+      <section class="proj-hero">
+        <a class="crumb" href="#/">${icon('back', 'icon-sm')}Todos os projetos</a>
+        <div class="proj-head">
+          <div style="flex:1;min-width:0">
+            <div class="title-line">${statusBadge(p.status)}${(p.tags || []).map((t) => `<span class="badge badge-outline">${esc(t)}</span>`).join('')}</div>
+            <h1>${esc(p.name)}</h1>
+            ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
+            <div class="meta">
+              ${p.owner ? `<span>${icon('user', 'icon-sm')}${esc(p.owner)}</span>` : ''}
+              ${p.due ? `<span>${icon('cal', 'icon-sm')}Prazo ${fmtDate(p.due)}</span>` : ''}
+              <span>${icon('clock', 'icon-sm')}Atualizado ${ago(p.updatedAt)}</span>
+            </div>
+            ${canEdit() ? `<div class="actions">
+              <button class="btn btn-secondary btn-sm" data-act="edit-project">${icon('edit', 'icon-sm')}Editar projeto</button>
+              <button class="btn btn-sm btn-icon btn-danger" data-act="delete-project" aria-label="Excluir projeto" title="Excluir projeto">${icon('trash', 'icon-sm')}</button>
+            </div>` : ''}
           </div>
+          <div class="proj-ring">${ring(pr.pct, 120, 10)}<span class="caption">${pr.done} de ${pr.total} itens</span></div>
         </div>
-        ${canEdit() ? `<div class="actions">
-          <button class="btn btn-secondary" data-act="edit-project">${icon('edit', 'icon-sm')}Editar</button>
-          <button class="btn btn-icon btn-danger" data-act="delete-project" aria-label="Excluir projeto" title="Excluir projeto">${icon('trash')}</button>
-        </div>` : ''}
       </section>
       <nav class="tabs" aria-label="Seções do projeto">
         ${tabs.map(([k, label, ic, count]) => `<a class="tab" href="${base}/${k}" ${tab === k ? 'aria-current="page"' : ''}>${icon(ic, 'icon-sm')}${label}${count !== '' && count !== 0 ? `<span class="count">${count}</span>` : ''}</a>`).join('')}
@@ -658,7 +628,7 @@
 
   async function upload(p, files) {
     if (!files.length) return;
-    if (!canEdit()) return openLogin();
+    if (!canEdit()) return toast('Token não configurado.', true);
     const max = cfg.maxUploadMB * 1048576;
     const ok = files.filter((f) => f.size <= max);
     files.filter((f) => f.size > max).forEach((f) => toast(`${f.name} passa de ${cfg.maxUploadMB} MB.`, true));
@@ -798,7 +768,6 @@
     const r = route();
     const p = r.view === 'project' ? getProject(r.id) : null;
     switch (b.dataset.act) {
-      case 'login': openLogin(); break;
       case 'new-project': newProject(); break;
       case 'edit-project': if (p) editProject(p); break;
       case 'delete-project': if (p) deleteProject(p); break;
@@ -816,9 +785,8 @@
   logo.src = cfg.logo;
   logo.onerror = () => { logo.style.display = 'none'; };
   $('#repo-label').textContent = `${GH.repo.owner}/${GH.repo.repo}`;
-  renderTheme();
-  renderAuth();
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderTheme);
+  renderName();
+  if (!state.name && canEdit()) setTimeout(askName, 400);
   if (!GH.repo.owner || !GH.repo.repo) {
     main.innerHTML = `<div class="empty" style="margin-top:48px">${icon('x')}<h3>Repositório não configurado</h3><p>Publique no GitHub Pages ou preencha <code>owner</code> e <code>repo</code> em <code>js/config.js</code>.</p></div>`;
   } else {
