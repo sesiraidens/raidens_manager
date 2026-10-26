@@ -24,6 +24,7 @@ Start-Process $url
 
 while ($listener.IsListening) {
   $ctx = $listener.GetContext()
+  try {
   $path = [Uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath.TrimStart('/'))
   if ($path -eq '') { $path = 'index.html' }
   $file = [IO.Path]::GetFullPath((Join-Path $root $path))
@@ -38,4 +39,5 @@ while ($listener.IsListening) {
     $res.StatusCode = 404
   }
   $res.Close()
+  } catch { try { $ctx.Response.Abort() } catch {} }
 }
