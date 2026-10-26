@@ -355,3 +355,11 @@ dialog[open] { animation: pop var(--normal); }
 .readonly-note { display: flex; align-items: center; gap: var(--s-sm); padding: var(--s-md) var(--s-lg); background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warning); border-radius: var(--r-md); font-size: .875rem; color: var(--text-2); margin: var(--s-xl) 0; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 639px) { .add-row select.input { max-width: 92px; } }
+.btn-chip-plain .icon { margin-left: 10px; }
+.readonly-note button { margin-left: auto; flex: none; }
+.howto { margin-bottom: var(--s-lg); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg); font-size: .875rem; }
+.howto summary { cursor: pointer; padding: 10px 14px; font-weight: 600; color: var(--red-dark); list-style: none; }
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary::before { content: '＋ '; font-weight: 700; }
+.howto[open] summary::before { content: '－ '; }
+.howto ol { margin: 0; padding: 0 20px 14px 34px; color: var(--text-2); line-height: 1.7; }

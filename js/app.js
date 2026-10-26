@@ -133,7 +133,7 @@
 
   // Aplica uma alteração sobre a versão mais recente do banco e grava. Repete se outra pessoa salvou ao mesmo tempo.
   async function mutate(fn, message) {
-    if (!canEdit()) { toast('Token não configurado em js/config.local.js.', true); return false; }
+    if (!canEdit()) { openSetup(); return false; }
     state.saving = true;
     setSync('saving');
     try {
@@ -152,7 +152,7 @@
           return true;
         } catch (e) {
           if (e.status === 409 || (e.status === 422 && /sha/i.test(e.message))) continue;
-          if (e.status === 401) throw new Error('O token em js/config.local.js é inválido ou expirou.');
+          if (e.status === 401) { GH.setToken(''); renderName(); throw new Error('O token expirou. Configure o acesso de novo.'); }
           throw e;
         }
       }
@@ -214,7 +214,36 @@
     openModal({ title, body: `<p>${text}</p>`, submit, danger: true, onSubmit: onYes });
   }
 
-  // ---------- Identificação (só o nome, para o histórico) ----------
+  // ---------- Acesso de edição e identificação ----------
+  function openSetup() {
+    const tokenUrl = 'https://github.com/settings/personal-access-tokens/new';
+    openModal({
+      title: 'Liberar edição',
+      submit: 'Liberar edição',
+      body: `<p class="small muted" style="margin-bottom:16px">Qualquer pessoa pode ver os projetos. Para criar e editar, cole uma vez um token do GitHub: ele fica guardado só neste navegador e não é pedido de novo.</p>
+        <details class="howto"><summary>Como gerar o token (1 minuto)</summary>
+          <ol><li>Abra <a href="${tokenUrl}" target="_blank" rel="noopener">Fine-grained tokens</a> e clique em <b>Generate new token</b>.</li>
+          <li>Em <i>Resource owner</i>, escolha <b>sesiraidens</b>.</li>
+          <li>Em <i>Repository access</i> → <b>Only select repositories</b> → <b>${esc(GH.repo.repo)}</b>.</li>
+          <li>Em <i>Permissions → Repository permissions → Contents</i>, marque <b>Read and write</b>.</li>
+          <li>Gere, copie e cole abaixo.</li></ol></details>
+        <div class="field"><label for="tk">Token do GitHub <span class="req">*</span></label>
+          <input class="input" id="tk" name="token" type="password" autocomplete="off" required placeholder="github_pat_… ou ghp_…"></div>
+        <div class="field" style="margin-bottom:0"><label for="nm">Seu nome</label>
+          <input class="input" id="nm" name="nome" maxlength="40" value="${esc(state.name)}" placeholder="Aparece no histórico">
+          <p class="hint">Se deixar em branco, usamos o seu usuário do GitHub.</p></div>`,
+      async onSubmit(fd) {
+        const token = String(fd.get('token')).trim();
+        const login = await GH.verify(token);
+        GH.setToken(token);
+        state.name = String(fd.get('nome') || '').trim() || login;
+        store.set(NAME_KEY, state.name);
+        renderName();
+        toast('Edição liberada neste navegador.');
+        await load();
+      }
+    });
+  }
   function askName() {
     openModal({
       title: 'Como você quer aparecer?',
@@ -225,6 +254,13 @@
   }
   function renderName() {
     const b = $('#name-btn');
+    if (!canEdit()) {
+      b.innerHTML = `${icon('key', 'icon-sm')}<span class="auth-label">Liberar edição</span>`;
+      b.classList.add('btn-chip-plain');
+      b.onclick = openSetup;
+      return;
+    }
+    b.classList.remove('btn-chip-plain');
     b.innerHTML = `<span class="avatar-initial">${esc((state.name || '?').charAt(0).toUpperCase())}</span><span class="auth-label">${esc(state.name || 'Definir nome')}</span>`;
     b.onclick = askName;
   }
@@ -251,7 +287,7 @@
     }
   }
 
-  const readonlyNote = () => canEdit() ? '' : `<div class="readonly-note">${icon('key', 'icon-sm')}<span>Modo leitura: o token não foi encontrado em <code>js/config.local.js</code>. Veja o README para configurar.</span></div>`;
+  const readonlyNote = () => canEdit() ? '' : `<div class="readonly-note">${icon('eye', 'icon-sm')}<span>Modo leitura. Para criar e editar, libere o acesso uma vez neste navegador.</span><button class="btn btn-sm btn-secondary" data-act="setup">${icon('key', 'icon-sm')}Liberar edição</button></div>`;
 
   // ---------- Página inicial ----------
   function renderHome() {
@@ -303,7 +339,7 @@
       </div>
       <div class="grid" id="grid">${list.map(projectCard).join('') || `<div class="empty" style="grid-column:1/-1">${icon('search')}<h3>Nenhum projeto encontrado</h3><p>Tente outro termo ou status.</p></div>`}</div>`
       : `<div class="empty">${icon('folder')}<h3>Nenhum projeto ainda</h3><p>Crie o primeiro projeto para começar a organizar documentação, arquivos e tarefas.</p>
-          ${canEdit() ? `<button class="btn btn-primary" data-act="new-project">${icon('plus')}Criar primeiro projeto</button>` : ''}</div>`}
+          <button class="btn btn-primary" data-act="${canEdit() ? 'new-project' : 'setup'}">${canEdit() ? `${icon('plus')}Criar primeiro projeto` : `${icon('key')}Liberar edição`}</button></div>`}
       ${readonlyNote()}`;
 
     const qEl = $('#q');
@@ -628,7 +664,7 @@
 
   async function upload(p, files) {
     if (!files.length) return;
-    if (!canEdit()) return toast('Token não configurado.', true);
+    if (!canEdit()) return openSetup();
     const max = cfg.maxUploadMB * 1048576;
     const ok = files.filter((f) => f.size <= max);
     files.filter((f) => f.size > max).forEach((f) => toast(`${f.name} passa de ${cfg.maxUploadMB} MB.`, true));
@@ -768,6 +804,7 @@
     const r = route();
     const p = r.view === 'project' ? getProject(r.id) : null;
     switch (b.dataset.act) {
+      case 'setup': openSetup(); break;
       case 'new-project': newProject(); break;
       case 'edit-project': if (p) editProject(p); break;
       case 'delete-project': if (p) deleteProject(p); break;
@@ -786,7 +823,7 @@
   logo.onerror = () => { logo.style.display = 'none'; };
   $('#repo-label').textContent = `${GH.repo.owner}/${GH.repo.repo}`;
   renderName();
-  if (!state.name && canEdit()) setTimeout(askName, 400);
+  if (canEdit() && !state.name) setTimeout(askName, 400);
   if (!GH.repo.owner || !GH.repo.repo) {
     main.innerHTML = `<div class="empty" style="margin-top:48px">${icon('x')}<h3>Repositório não configurado</h3><p>Publique no GitHub Pages ou preencha <code>owner</code> e <code>repo</code> em <code>js/config.js</code>.</p></div>`;
   } else {

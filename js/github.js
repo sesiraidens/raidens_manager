@@ -1,5 +1,6 @@
 // Camada de persistência: tudo fica no próprio repositório GitHub (API REST de contents).
-// O app roda em localhost e usa o token configurado em js/config.local.js.
+// Leitura é pública. Para editar, o token fica salvo no navegador de quem configurou
+// (ou em js/config.local.js, quando o gestor roda localmente).
 const GH = (() => {
   const API = 'https://api.github.com';
   const cfg = window.GESTOR_CONFIG || {};
@@ -14,8 +15,27 @@ const GH = (() => {
 
   const repo = { ...detectRepo(), branch: cfg.dataBranch || 'dados' };
 
-  // O token vem de js/config.local.js (fora do Git), nunca do código publicado.
-  const getToken = () => (window.GESTOR_LOCAL && window.GESTOR_LOCAL.token) || '';
+  // O token nunca fica no código publicado: vem do navegador ou de js/config.local.js.
+  const TOKEN_KEY = 'raidens-gestor-token';
+  function getToken() {
+    if (window.GESTOR_LOCAL && window.GESTOR_LOCAL.token) return window.GESTOR_LOCAL.token;
+    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
+  }
+  function setToken(t) {
+    try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {}
+  }
+
+  // Confere se o token é válido e se dá para escrever no repositório.
+  async function verify(token) {
+    const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}` };
+    const u = await fetch(`${API}/user`, { headers, cache: 'no-store' });
+    if (!u.ok) throw new Error('Token inválido ou expirado.');
+    const r = await fetch(`${API}/repos/${repo.owner}/${repo.repo}`, { headers, cache: 'no-store' });
+    if (!r.ok) throw new Error(`Este token não alcança ${repo.owner}/${repo.repo}.`);
+    const info = await r.json();
+    if (!info.permissions || !info.permissions.push) throw new Error('Este token só tem leitura. Ele precisa de Contents: Read and write.');
+    return (await u.json()).login;
+  }
 
   async function req(path, { method = 'GET', body, accept, auth = true } = {}) {
     const headers = { Accept: accept || 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
@@ -112,5 +132,5 @@ const GH = (() => {
     await req(`/repos/${repo.owner}/${repo.repo}/git/refs`, { method: 'POST', body: { ref: `refs/heads/${repo.branch}`, sha: base.object.sha } });
   }
 
-  return { repo, getToken, getJSON, putFile, deleteFile, getBlob, rawUrl, ensureBranch, utf8ToB64, bytesToB64 };
+  return { repo, getToken, setToken, verify, getJSON, putFile, deleteFile, getBlob, rawUrl, ensureBranch, utf8ToB64, bytesToB64 };
 })();
