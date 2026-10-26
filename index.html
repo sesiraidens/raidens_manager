@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestor RAIDENS</title>
+  <meta name="description" content="Gestor de projetos e documentações da equipe RAIDENS.">
+  <link rel="icon" href="https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    try { const t = localStorage.getItem('raidens-gestor-theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Pular para o conteúdo</a>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#/" aria-label="Início">
+        <img id="logo" alt="RAIDENS" width="36" height="36">
+        <span class="brand-text"><strong>RAIDENS</strong><span>Gestor de Projetos</span></span>
+      </a>
+      <div class="topbar-actions">
+        <span id="sync" class="sync" aria-live="polite"></span>
+        <button id="theme-btn" class="btn btn-icon btn-secondary" aria-label="Alternar tema claro/escuro"></button>
+        <button id="auth-btn" class="btn btn-secondary"></button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="container" tabindex="-1">
+    <div class="loading"><span class="spinner"></span> Carregando projetos…</div>
+  </main>
+
+  <footer class="container footer">
+    <span>RAIDENS · dados salvos no GitHub em <code id="repo-label"></code></span>
+  </footer>
+
+  <dialog id="modal" aria-labelledby="modal-title">
+    <form id="modal-form" method="dialog">
+      <header class="modal-head">
+        <h3 id="modal-title"></h3>
+        <button type="button" class="btn btn-icon btn-ghost" data-close aria-label="Fechar"></button>
+      </header>
+      <div id="modal-body" class="modal-body"></div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-secondary" data-close>Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="modal-submit">Salvar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="js/vendor/marked.min.js"></script>
+  <script src="js/vendor/purify.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/github.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
