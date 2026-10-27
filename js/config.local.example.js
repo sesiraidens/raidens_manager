@@ -5,3 +5,4 @@ window.GESTOR_LOCAL = {
   nome: ''   // opcional: nome padrão que aparece no histórico
 };
 
+
