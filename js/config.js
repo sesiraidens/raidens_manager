@@ -10,3 +10,4 @@ window.GESTOR_CONFIG = {
   // Logo oficial RAIDENS, baixado de https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png
   logo: 'assets/logo_color.png'
 };
+
