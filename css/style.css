@@ -407,3 +407,4 @@ dialog[open] { animation: pop .45s var(--ease-spring); }
 @media (max-width: 680px) { .add-row select.input { max-width: 92px; padding-left: 12px; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
