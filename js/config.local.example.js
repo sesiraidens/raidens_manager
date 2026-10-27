@@ -4,3 +4,4 @@ window.GESTOR_LOCAL = {
   token: 'COLE_AQUI_O_TOKEN_DO_GITHUB',
   nome: ''   // opcional: nome padrão que aparece no histórico
 };
+
