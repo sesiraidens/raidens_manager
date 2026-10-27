@@ -311,9 +311,9 @@
     main.innerHTML = `
       <section class="hero">
         <div class="hero-text">
-          <span class="eyebrow"><i></i>Painel da equipe</span>
-          <h1>Projetos <em>RAIDENS</em></h1>
-          <p>Documentação, anexos, evolução e o que falta fazer em cada projeto, num só lugar.</p>
+          <span class="eyebrow"><i>01</i>Painel da equipe</span>
+          <h1><span class="line">Cada projeto</span><span class="line"><em>RAIDENS</em> em</span><span class="line">um só lugar.</span></h1>
+          <p>Documentação, anexos, evolução e o que falta fazer em cada projeto da equipe.</p>
         </div>
         ${canEdit() ? `<button class="btn btn-primary btn-lg" data-act="new-project">${icon('plus')}Novo projeto</button>` : ''}
       </section>
