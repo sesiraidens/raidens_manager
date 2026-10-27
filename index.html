@@ -3,26 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Gestor RAIDENS</title>
+  <meta name="color-scheme" content="light dark">
+  <title>Raidens | Gestor | Projetos</title>
   <meta name="description" content="Gestor de projetos e documentações da equipe RAIDENS.">
-  <link rel="icon" href="https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png">
+  <!-- Logo oficial OBRIGATÓRIO — https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png -->
+  <link rel="icon" type="image/png" href="assets/logo_color.png">
+  <script>(function(){var t=null;try{t=localStorage.getItem('theme');}catch(e){}document.documentElement.setAttribute('data-theme',t||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));})();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <a class="skip" href="#main">Pular para o conteúdo</a>
-  <header class="topbar">
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  <header class="topbar" id="topbar">
     <div class="container topbar-inner">
       <a class="brand" href="#/" aria-label="Início">
-        <img id="logo" alt="RAIDENS" width="36" height="36">
-        <span class="brand-text"><strong>RAIDENS</strong><span>Gestor de Projetos</span></span>
+        <img id="logo" alt="Raidens" width="34" height="34">
+        <span class="brand-text"><strong>RAIDENS</strong><span>Gestor · Projetos</span></span>
       </a>
       <div class="topbar-actions">
         <span id="sync" class="sync" aria-live="polite"></span>
         <button id="name-btn" class="btn btn-chip" title="Seu nome no histórico"></button>
+        <button class="theme-btn" id="themeBtn" type="button" aria-label="Alternar tema"></button>
       </div>
     </div>
   </header>
@@ -31,8 +35,10 @@
     <div class="loading"><span class="spinner"></span> Carregando projetos…</div>
   </main>
 
-  <footer class="container footer">
-    <span>RAIDENS · dados salvos no GitHub em <code id="repo-label"></code></span>
+  <footer class="footer">
+    <div class="foot-logos"><img src="assets/logo_color.png" alt="Raidens"></div>
+    <p>Desenvolvido pela equipe <a href="https://www.instagram.com/sesiraidens/" target="_blank" rel="noopener"><strong>Raidens</strong></a> — 2026</p>
+    <p class="small">Dados salvos no GitHub em <code id="repo-label"></code></p>
   </footer>
 
   <dialog id="modal" aria-labelledby="modal-title">
@@ -57,5 +63,6 @@
   <script src="js/config.local.js" onerror="void 0"></script>
   <script src="js/github.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/theme.js"></script>
 </body>
 </html>

@@ -7,5 +7,6 @@ window.GESTOR_CONFIG = {
   dbPath: 'data/db.json',
   filesDir: 'arquivos',
   maxUploadMB: 25,
-  logo: 'https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png'
+  // Logo oficial RAIDENS, baixado de https://sesiraidens.github.io/portifolio/assets/logo_color-aNRVU26Y.png
+  logo: 'assets/logo_color.png'
 };
